@@ -1,0 +1,110 @@
+provider "aws" {
+  region = "ap-south-1" # Mumbai region
+}
+
+resource "tls_private_key" "tfe_key" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+resource "local_file" "private_key" {
+  content         = tls_private_key.tfe_key.private_key_pem
+  filename        = "/Users/harshitchaudhary/Hashicorp/tfe_dockerized/ec2_instance_terraform/tfe_key.pem"
+  file_permission = "0400"
+}
+
+resource "aws_key_pair" "tfe_key" {
+  key_name   = "tfe_key"
+  public_key = tls_private_key.tfe_key.public_key_openssh
+}
+
+resource "aws_security_group" "tfe_sg" {
+  name        = "tfe_security_group"
+  description = "Allow SSH, HTTP, and HTTPS access"
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_instance" "ubuntu_openssl_4_tfe" {
+  ami                    = data.aws_ami.ubuntu.id
+  instance_type          = "t2.medium"
+  key_name               = aws_key_pair.tfe_key.key_name
+  associate_public_ip_address = true
+  vpc_security_group_ids = [aws_security_group.tfe_sg.id]
+
+  root_block_device {
+    volume_size = 24 # 24GB disk size
+    volume_type = "gp3"
+  }
+
+  user_data = <<-EOF
+              #!/bin/bash
+              sudo apt-get update -y
+              sudo apt-get install -y openssl
+              openssl version >> /home/ubuntu/openssl_version.txt
+
+              # Install Docker
+              sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+              echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu focal stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+              sudo apt-get update -y
+              sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+
+              # Enable Docker service
+              sudo systemctl enable docker
+              sudo systemctl start docker
+
+              # Add ubuntu user to docker group
+              sudo usermod -aG docker ubuntu
+
+              # Install Docker Compose
+              sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+              sudo chmod +x /usr/local/bin/docker-compose
+              docker-compose --version >> /home/ubuntu/docker_compose_version.txt
+              EOF
+
+  tags = {
+    Name = "ubuntu_openssl_4_tfe"
+  }
+}
+
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  owners      = ["099720109477"] # Canonical
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"]
+  }
+}
+
+output "instance_public_id" {
+  value = aws_instance.ubuntu_openssl_4_tfe.public_ip
+}
+
