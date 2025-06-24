@@ -1,22 +1,21 @@
 terraform {
+  backend "s3" {
+    bucket         = "tf-migrate-demo-backend"
+    key            = "ec2_instance_terraform/terraform.tfstate"
+    region         = "ap-south-1"
+    encrypt        = true
+  }
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 3.0"
     }
   }
-  cloud {
-    organization = "tf-migrate-demo-purpose-tfe-instance"
-    hostname     = "app.terraform.io"
-    workspaces {
-      project = "ec2_instance_terraform"
-      name    = "ec2_instance_terraform_default"
-    }
-  }
 }
 
 provider "aws" {
-  region = "ap-south-1" # Mumbai region
+  region = "ap-south-1"
 }
 
 resource "random_id" "suffix" {
