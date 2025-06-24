@@ -1,5 +1,18 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 3.0"
+    }
+  }
+}
+
 provider "aws" {
   region = "ap-south-1" # Mumbai region
+}
+
+resource "random_id" "suffix" {
+  byte_length = 4
 }
 
 resource "tls_private_key" "tfe_key" {
@@ -7,19 +20,15 @@ resource "tls_private_key" "tfe_key" {
   rsa_bits  = 4096
 }
 
-resource "local_file" "private_key" {
-  content         = tls_private_key.tfe_key.private_key_pem
-  filename        = "/Users/harshitchaudhary/Hashicorp/tfe_dockerized/ec2_instance_terraform/tfe_key.pem"
-  file_permission = "0400"
-}
+# ⚠️ Removed local_file block — Terraform Cloud cannot write to your local system
 
 resource "aws_key_pair" "tfe_key" {
-  key_name   = "tfe_key"
+  key_name   = "tfe_key_${random_id.suffix.hex}"
   public_key = tls_private_key.tfe_key.public_key_openssh
 }
 
 resource "aws_security_group" "tfe_sg" {
-  name        = "tfe_security_group"
+  name        = "tfe_security_group_${random_id.suffix.hex}"
   description = "Allow SSH, HTTP, and HTTPS access"
 
   ingress {
@@ -59,7 +68,7 @@ resource "aws_instance" "ubuntu_openssl_4_tfe" {
   vpc_security_group_ids = [aws_security_group.tfe_sg.id]
 
   root_block_device {
-    volume_size = 24 # 24GB disk size
+    volume_size = 24
     volume_type = "gp3"
   }
 
@@ -76,14 +85,10 @@ resource "aws_instance" "ubuntu_openssl_4_tfe" {
               sudo apt-get update -y
               sudo apt-get install -y docker-ce docker-ce-cli containerd.io
 
-              # Enable Docker service
               sudo systemctl enable docker
               sudo systemctl start docker
-
-              # Add ubuntu user to docker group
               sudo usermod -aG docker ubuntu
 
-              # Install Docker Compose
               sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
               sudo chmod +x /usr/local/bin/docker-compose
               docker-compose --version >> /home/ubuntu/docker_compose_version.txt
@@ -96,7 +101,7 @@ resource "aws_instance" "ubuntu_openssl_4_tfe" {
 
 data "aws_ami" "ubuntu" {
   most_recent = true
-  owners      = ["099720109477"] # Canonical
+  owners      = ["099720109477"]
 
   filter {
     name   = "name"
@@ -107,4 +112,3 @@ data "aws_ami" "ubuntu" {
 output "instance_public_id" {
   value = aws_instance.ubuntu_openssl_4_tfe.public_ip
 }
-
