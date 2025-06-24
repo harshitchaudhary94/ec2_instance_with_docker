@@ -4,6 +4,9 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 3.0"
     }
+    tfmigrate = {
+      source  = "hashicorp/tfmigrate"
+    }
   }
   backend "local" {
     path = "terraform.tfstate"
