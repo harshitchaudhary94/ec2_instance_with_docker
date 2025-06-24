@@ -5,8 +5,13 @@ terraform {
       version = "~> 3.0"
     }
   }
-  backend "local" {
-    path = "terraform.tfstate"
+  cloud {
+    organization = "tf-migrate-demo-purpose-tfe-instance"
+    hostname     = "app.terraform.io"
+    workspaces {
+      project = "ec2_instance_terraform"
+      name    = "ec2_instance_terraform_default"
+    }
   }
 }
 
@@ -62,11 +67,11 @@ resource "aws_security_group" "tfe_sg" {
 }
 
 resource "aws_instance" "ubuntu_openssl_4_tfe" {
-  ami                    = data.aws_ami.ubuntu.id
-  instance_type          = "t2.medium"
-  key_name               = aws_key_pair.tfe_key.key_name
+  ami                         = data.aws_ami.ubuntu.id
+  instance_type               = "t2.medium"
+  key_name                    = aws_key_pair.tfe_key.key_name
   associate_public_ip_address = true
-  vpc_security_group_ids = [aws_security_group.tfe_sg.id]
+  vpc_security_group_ids      = [aws_security_group.tfe_sg.id]
 
   root_block_device {
     volume_size = 24
