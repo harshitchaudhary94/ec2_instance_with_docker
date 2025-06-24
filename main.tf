@@ -4,10 +4,6 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 3.0"
     }
-    tfmigrate = {
-      source  = "hashicorp/tfmigrate"
-      version = "~> 1.1"
-    }
   }
   backend "local" {
     path = "terraform.tfstate"
@@ -18,11 +14,6 @@ provider "aws" {
   region = "ap-south-1" # Mumbai region
 }
 
-provider "tfmigrate" {
-  hostname = "app.terraform.io"
-
-}
-
 resource "random_id" "suffix" {
   byte_length = 4
 }
@@ -31,8 +22,6 @@ resource "tls_private_key" "tfe_key" {
   algorithm = "RSA"
   rsa_bits  = 4096
 }
-
-# ⚠️ Removed local_file block — Terraform Cloud cannot write to your local system
 
 resource "aws_key_pair" "tfe_key" {
   key_name   = "tfe_key_${random_id.suffix.hex}"
