@@ -6,6 +6,7 @@ terraform {
     }
     tfmigrate = {
       source  = "hashicorp/tfmigrate"
+      version = "~> 1.1"
     }
   }
   backend "local" {
@@ -19,7 +20,7 @@ provider "aws" {
 
 provider "tfmigrate" {
   hostname = "app.terraform.io"
-  
+
 }
 
 resource "random_id" "suffix" {
