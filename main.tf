@@ -17,6 +17,11 @@ provider "aws" {
   region = "ap-south-1" # Mumbai region
 }
 
+provider "tfmigrate" {
+  hostname = "app.terraform.io"
+  
+}
+
 resource "random_id" "suffix" {
   byte_length = 4
 }
